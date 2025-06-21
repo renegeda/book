@@ -7,25 +7,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="flipbook-container">
-        <div class="flipbook" id="flipbook">
-            <!-- Страницы будут добавлены динамически -->
-        </div>
+    <div class="container">
+        <div class="thumbnails-container" id="thumbnails"></div>
         <div class="flipbook-container">
-            <div class="thumbnails" id="thumbnails"></div>
             <div class="flipbook" id="flipbook"></div>
-            <div class="controls">
-                <button id="prev-page">Предыдущая</button>
-                <span id="page-num">Страница 1 из 1</span>
-                <button id="next-page">Следующая</button>
-            </div>
+        </div>
+        <div class="controls">
+            <button id="prev-btn">← Назад</button>
+            <span id="page-indicator">Страница 1 из 1</span>
+            <button id="next-btn">Вперед →</button>
         </div>
     </div>
 
-    <!-- Подключаем PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
-    <!-- Подключаем TouchSwipe для мобильных устройств -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.touchswipe/1.6.19/jquery.touchSwipe.min.js"></script>
     <script src="flipbook.js"></script>
 </body>
 </html>

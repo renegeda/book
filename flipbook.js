@@ -1,70 +1,62 @@
-/**
- * 3D Flipbook PDF Viewer
- * @version 2.0
- * @description Реализация 3D Flipbook с миниатюрами и фиксированным PDF
- */
+// Конфигурация
+const config = {
+    pdfUrl: './assets/24_1305.pdf', // Относительный путь к файлу
+    scale: 1.5,
+    thumbnailScale: 0.2
+};
 
-// Инициализация PDF.js
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+class Flipbook {
+    constructor() {
+        this.state = {
+            pdfDoc: null,
+            totalPages: 0,
+            currentPage: 1,
+            isFlipping: false,
+            pages: [],
+            thumbnails: []
+        };
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Элементы DOM
-    const flipbook = document.getElementById('flipbook');
-    const thumbnails = document.getElementById('thumbnails');
-    const prevBtn = document.getElementById('prev-page');
-    const nextBtn = document.getElementById('next-page');
-    const pageNum = document.getElementById('page-num');
-    
-    // Состояние приложения
-    let state = {
-        pdfDoc: null,
-        totalPages: 0,
-        currentPage: 1,
-        isFlipping: false,
-        pages: [],
-        thumbnails: []
-    };
-    
-    // Инициализация приложения
-    initFlipbook();
-    
-    /**
-     * Инициализирует flipbook с тестовым PDF
-     */
-    async function initFlipbook() {
-        // Пример PDF (замените на ваш URL или бинарные данные)
-        const pdfUrl = '24_1305.pdf';
-        
+        this.elements = {
+            flipbook: document.getElementById('flipbook'),
+            thumbnails: document.getElementById('thumbnails'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            pageIndicator: document.getElementById('page-indicator')
+        };
+
+        this.init();
+    }
+
+    async init() {
         try {
-            // Загрузка PDF документа
-            state.pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
-            state.totalPages = state.pdfDoc.numPages;
+            // Загрузка PDF с использованием fetch для локальных файлов
+            const response = await fetch(config.pdfUrl);
+            if (!response.ok) throw new Error('PDF не найден');
             
-            // Создание миниатюр
-            await createThumbnails();
+            const arrayBuffer = await response.arrayBuffer();
+            const typedArray = new Uint8Array(arrayBuffer);
             
-            // Загрузка первых страниц
-            await loadInitialPages();
+            this.state.pdfDoc = await pdfjsLib.getDocument(typedArray).promise;
+            this.state.totalPages = this.state.pdfDoc.numPages;
             
-            // Обновление информации о странице
-            updatePageInfo();
+            await this.createThumbnails();
+            await this.loadPage(1);
+            this.updateUI();
+            this.setupEventListeners();
             
         } catch (error) {
             console.error('Ошибка инициализации:', error);
-            alert('Не удалось загрузить PDF документ');
+            alert(`Не удалось загрузить PDF документ: ${error.message}`);
         }
     }
-    
-    /**
-     * Создает миниатюры для всех страниц
-     */
-    async function createThumbnails() {
-        thumbnails.innerHTML = '';
-        state.thumbnails = [];
-        
-        for (let i = 1; i <= state.totalPages; i++) {
-            const page = await state.pdfDoc.getPage(i);
-            const viewport = page.getViewport({ scale: 0.2 });
+
+    async createThumbnails() {
+        this.elements.thumbnails.innerHTML = '';
+        this.state.thumbnails = [];
+
+        for (let i = 1; i <= this.state.totalPages; i++) {
+            const page = await this.state.pdfDoc.getPage(i);
+            const viewport = page.getViewport({ scale: config.thumbnailScale });
             
             const canvas = document.createElement('canvas');
             canvas.className = 'thumbnail';
@@ -78,109 +70,126 @@ document.addEventListener('DOMContentLoaded', function() {
                 viewport: viewport
             }).promise;
             
-            // Обработчик клика на миниатюру
-            canvas.addEventListener('click', () => {
-                if (!state.isFlipping) goToPage(i);
-            });
+            canvas.addEventListener('click', () => this.goToPage(i));
             
-            thumbnails.appendChild(canvas);
-            state.thumbnails.push(canvas);
+            this.elements.thumbnails.appendChild(canvas);
+            this.state.thumbnails.push(canvas);
         }
     }
-    
-    /**
-     * Загружает начальные страницы (первую и вторую)
-     */
-    async function loadInitialPages() {
-        flipbook.innerHTML = '';
+
+    async loadPage(pageNum) {
+        if (pageNum < 1 || pageNum > this.state.totalPages) return;
         
-        // Загружаем первую страницу
-        const firstPage = await renderPage(1);
-        const firstPageElement = createPageElement(firstPage, true);
-        flipbook.appendChild(firstPageElement);
-        state.pages.push(firstPage);
+        // Проверяем, есть ли уже страница в DOM
+        const existingPage = document.querySelector(`.page[data-page-num="${pageNum}"]`);
+        if (existingPage) return;
         
-        // Если есть вторая страница, загружаем ее
-        if (state.totalPages > 1) {
-            const secondPage = await renderPage(2);
-            const secondPageElement = createPageElement(secondPage, false);
-            flipbook.appendChild(secondPageElement);
-            state.pages.push(secondPage);
+        // Рендерим страницу
+        const page = await this.state.pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: config.scale });
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const context = canvas.getContext('2d');
+        await page.render({
+            canvasContext: context,
+            viewport: viewport
+        }).promise;
+        
+        // Создаем элемент страницы
+        const pageElement = document.createElement('div');
+        pageElement.className = 'page';
+        pageElement.dataset.pageNum = pageNum;
+        
+        const pageContent = document.createElement('div');
+        pageContent.className = 'page-content';
+        pageContent.appendChild(canvas);
+        
+        pageElement.appendChild(pageContent);
+        this.elements.flipbook.appendChild(pageElement);
+        
+        // Позиционируем страницу
+        this.positionPage(pageElement, pageNum);
+        
+        this.state.pages.push(pageElement);
+    }
+
+    positionPage(pageElement, pageNum) {
+        if (pageNum < this.state.currentPage) {
+            // Страницы слева (уже просмотренные)
+            pageElement.style.transform = 'rotateY(-180deg) translateX(-100%)';
+            pageElement.style.zIndex = this.state.totalPages - pageNum;
+        } else if (pageNum > this.state.currentPage) {
+            // Страницы справа (еще не просмотренные)
+            pageElement.style.transform = 'rotateY(0deg) translateX(100%)';
+            pageElement.style.zIndex = pageNum;
+        } else {
+            // Текущая страница
+            pageElement.style.transform = 'rotateY(0deg) translateX(0)';
+            pageElement.style.zIndex = this.state.totalPages + 1;
         }
     }
-    
-    /**
-     * Переходит к указанной странице
-     * @param {number} pageNum - Номер страницы
-     */
-    async function goToPage(pageNum) {
-        if (state.isFlipping || pageNum < 1 || pageNum > state.totalPages) return;
+
+    async goToPage(pageNum) {
+        if (this.state.isFlipping || 
+            pageNum < 1 || 
+            pageNum > this.state.totalPages || 
+            pageNum === this.state.currentPage) return;
         
-        const diff = pageNum - state.currentPage;
-        if (diff === 0) return;
+        this.state.isFlipping = true;
         
-        state.isFlipping = true;
+        // Загружаем страницу, если ее нет
+        await this.loadPage(pageNum);
+        
+        // Анимация перехода
+        const direction = pageNum > this.state.currentPage ? 1 : -1;
+        const currentPageElement = document.querySelector(`.page[data-page-num="${this.state.currentPage}"]`);
+        const nextPageElement = document.querySelector(`.page[data-page-num="${pageNum}"]`);
+        
+        // Анимация
+        currentPageElement.style.transform = direction > 0 
+            ? 'rotateY(-180deg) translateX(-100%)' 
+            : 'rotateY(0deg) translateX(100%)';
+        
+        nextPageElement.style.transform = 'rotateY(0deg) translateX(0)';
+        nextPageElement.style.zIndex = this.state.totalPages + 1;
+        
+        // Обновляем состояние после анимации
+        setTimeout(() => {
+            this.state.currentPage = pageNum;
+            this.state.isFlipping = false;
+            this.updateUI();
+        }, 1000);
+    }
+
+    updateUI() {
+        // Обновляем индикатор страницы
+        this.elements.pageIndicator.textContent = `Страница ${this.state.currentPage} из ${this.state.totalPages}`;
+        
+        // Обновляем состояние кнопок
+        this.elements.prevBtn.disabled = this.state.currentPage <= 1;
+        this.elements.nextBtn.disabled = this.state.currentPage >= this.state.totalPages;
         
         // Обновляем активную миниатюру
-        updateActiveThumbnail(pageNum);
-        
-        // Если переход на +1/-1 страницу - анимируем перелистывание
-        if (Math.abs(diff) === 1) {
-            await animatePageFlip(diff);
-        } else {
-            // Для больших переходов просто заменяем страницы
-            await replacePages(pageNum);
-        }
-        
-        state.currentPage = pageNum;
-        state.isFlipping = false;
-        updatePageInfo();
-    }
-    
-    /**
-     * Анимирует перелистывание страницы
-     * @param {number} direction - 1 для следующей, -1 для предыдущей
-     */
-    async function animatePageFlip(direction) {
-        const currentPageElement = document.querySelector(`.page[data-page-num="${state.currentPage}"]`);
-        const nextPageNum = state.currentPage + direction;
-        let nextPageElement = document.querySelector(`.page[data-page-num="${nextPageNum}"]`);
-        
-        // Если следующей страницы нет в DOM, загружаем ее
-        if (!nextPageElement) {
-            const newPage = await renderPage(nextPageNum);
-            nextPageElement = createPageElement(newPage, false);
-            flipbook.appendChild(nextPageElement);
-            state.pages.push(newPage);
-        }
-        
-        // Анимация переворота
-        if (direction > 0) {
-            currentPageElement.style.transform = 'rotateY(180deg)';
-            nextPageElement.style.transform = 'rotateY(0deg)';
-        } else {
-            currentPageElement.style.transform = 'rotateY(-180deg)';
-            nextPageElement.style.transform = 'rotateY(0deg)';
-        }
-        
-        // Обновляем z-index
-        currentPageElement.style.zIndex = '1';
-        nextPageElement.style.zIndex = '2';
-        
-        // Ждем завершения анимации
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-    
-    /**
-     * Обновляет активную миниатюру
-     * @param {number} pageNum - Номер активной страницы
-     */
-    function updateActiveThumbnail(pageNum) {
-        state.thumbnails.forEach(thumb => {
-            thumb.classList.toggle('active', parseInt(thumb.dataset.pageNum) === pageNum);
+        this.state.thumbnails.forEach(thumb => {
+            thumb.classList.toggle('active', parseInt(thumb.dataset.pageNum) === this.state.currentPage);
         });
     }
-    
-    // Остальные функции (renderPage, createPageElement, updatePageInfo) остаются без изменений
-    // Кнопки и обработчики событий также остаются прежними
+
+    setupEventListeners() {
+        this.elements.prevBtn.addEventListener('click', () => this.goToPage(this.state.currentPage - 1));
+        this.elements.nextBtn.addEventListener('click', () => this.goToPage(this.state.currentPage + 1));
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') this.goToPage(this.state.currentPage - 1);
+            if (e.key === 'ArrowRight') this.goToPage(this.state.currentPage + 1);
+        });
+    }
+}
+
+// Инициализация при загрузке страницы
+document.addEventListener('DOMContentLoaded', () => {
+    new Flipbook();
 });
