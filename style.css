@@ -3,106 +3,269 @@ body {
     margin: 0;
     padding: 20px;
     background: #f0f0f0;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
-.thumbnails-container {
     display: flex;
-    overflow-x: auto;
-    gap: 10px;
-    padding: 10px 0;
-    margin-bottom: 20px;
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
-.thumbnail {
-    width: 100px;
-    height: 130px;
+/* Стили превью */
+.preview-container {
+    position: relative;
+    width: 300px;
+    height: 400px;
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.3s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    background: white;
+    overflow: hidden;
 }
 
-.thumbnail:hover {
-    transform: scale(1.05);
-    box-shadow: 0 3px 6px rgba(0,0,0,0.3);
-}
-
-.thumbnail.active {
-    border-color: #4285f4;
-}
-
-.flipbook-container {
+#preview-canvas {
     width: 100%;
-    height: 1600px;
-    perspective: 2000px;
-    margin-bottom: 20px;
+    height: 100%;
+    object-fit: contain;
 }
 
-.flipbook {
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.preview-container:hover .preview-overlay {
+    opacity: 1;
+}
+
+/* Стили лайтбокса */
+.lightbox {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.97);
+    z-index: 1000;
+    overflow: hidden;
+    padding: 0;
+    margin: 0;
+}
+
+.lightbox.active {
+    display: block;
+}
+
+.lightbox-content {
     position: relative;
     width: 100%;
     height: 100%;
-    transform-style: preserve-3d;
+    background: #222;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 
-.page {
+.close-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    font-size: 36px;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    cursor: pointer;
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    z-index: 1001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.close-btn:hover {
+    background: rgba(255,255,255,0.2);
+    transform: scale(1.1);
+}
+
+/* Стили flipbook */
+.flipbook {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 70px);
+    perspective: 2000px;
+    margin: 0 auto;
+    flex-grow: 1;
+}
+
+.page-container {
     position: absolute;
-    width: 50%;
-    height: 100%;
-    left: 25%;
-    transform-origin: left center;
-    transition: transform 1s;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    background: white;
-}
-
-.page-content {
     width: 100%;
     height: 100%;
     overflow: hidden;
 }
 
-.controls {
+.page {
+    position: absolute;
+    width: 50%;
+    height: 90%;
+    top: 5%;
+    left: 25%;
+    transform-origin: left center;
+    transition: transform 1s ease-in-out;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    background: white;
+    overflow: hidden;
+}
+
+.page-wrapper {
+    position: absolute;
+    transform-origin: 0 0;
+    transition: transform 0.3s ease;
+    will-change: transform;
+}
+
+.page-content {
+    position: relative;
+    width: 100%;
+    height: 100%;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 20px;
-    padding: 15px;
-    background: white;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    touch-action: none;
 }
 
-button {
-    padding: 10px 20px;
-    background: #4285f4;
+.page-content canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    -ms-interpolation-mode: nearest-neighbor;
+}
+
+/* Стили управления зумом */
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 20px;
+}
+
+.zoom-controls button {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(5px);
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: all 0.3s;
+}
+
+.zoom-controls button:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#zoom-level {
+    color: white;
+    min-width: 50px;
+    text-align: center;
     font-size: 16px;
-    transition: background 0.3s;
 }
 
-button:hover {
-    background: #3367d6;
+/* Общие стили управления */
+.controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 15px 0;
+    background: rgba(0,0,0,0.7);
+    position: relative;
+    z-index: 100;
 }
 
-button:disabled {
-    background: #cccccc;
+.controls button {
+    padding: 12px 30px;
+    font-size: 18px;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(5px);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.controls button:hover {
+    background: rgba(255,255,255,0.3);
+    transform: scale(1.05);
+}
+
+.controls button:disabled {
+    opacity: 0.5;
+    transform: none;
     cursor: not-allowed;
 }
 
 #page-indicator {
-    font-size: 16px;
-    min-width: 120px;
+    font-size: 18px;
+    color: white;
+    min-width: 150px;
     text-align: center;
+}
+
+/* Стили для перетаскивания */
+.grabbing {
+    cursor: grabbing;
+}
+
+.grabbing .page-content {
+    cursor: grabbing;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .page {
+        width: 80%;
+        left: 10%;
+    }
+    
+    .controls {
+        flex-wrap: wrap;
+        padding: 10px;
+        gap: 15px;
+    }
+    
+    .zoom-controls {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin: 10px 0 0;
+    }
+    
+    .controls button {
+        padding: 10px 20px;
+        font-size: 16px;
+    }
 }
