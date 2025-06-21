@@ -7,15 +7,29 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <div class="thumbnails-container" id="thumbnails"></div>
-        <div class="flipbook-container">
-            <div class="flipbook" id="flipbook"></div>
-        </div>
-        <div class="controls">
-            <button id="prev-btn">← Назад</button>
-            <span id="page-indicator">Страница 1 из 1</span>
-            <button id="next-btn">Вперед →</button>
+    <!-- Предпросмотр первой страницы -->
+    <div class="preview-container" id="preview">
+        <canvas id="preview-canvas"></canvas>
+        <div class="preview-overlay">Нажмите для просмотра</div>
+    </div>
+
+    <!-- Лайтбокс -->
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-content">
+            <div class="flipbook" id="flipbook">
+                <div class="page-container" id="page-container"></div>
+            </div>
+            <div class="controls">
+                <button id="prev-btn">← Назад</button>
+                <div class="zoom-controls">
+                    <button id="zoom-out">-</button>
+                    <span id="zoom-level">100%</span>
+                    <button id="zoom-in">+</button>
+                </div>
+                <span id="page-indicator">Страница 1 из 1</span>
+                <button id="next-btn">Вперед →</button>
+            </div>
+            <button class="close-btn" id="close-btn">×</button>
         </div>
     </div>
 
